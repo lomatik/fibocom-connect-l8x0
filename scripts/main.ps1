@@ -7,7 +7,7 @@ param(
 $PSDefaultParameterValues = @{"*:Verbose" = ($VerbosePreference -eq 'Continue') }
 $ErrorActionPreference = 'Stop'
 
-$app_version = "Fibocom Connect v2024.02.2"
+$app_version = "Fibocom Connect v2025.04.3"
 
 Clear-Host
 
@@ -27,6 +27,8 @@ $MAC = "00-00-11-12-13-14"
 
 # COM port display name search string. Supports wildcard. Could be "*COM7*" if acm2 does not exists on your machine
 $COM_NAME = "*acm2*"
+
+#$COM_NAME = "*COM6*"
 
 $APN = "internet"
 $APN_USER = ""
@@ -264,6 +266,7 @@ while ($true) {
             $response += Send-ATCommand -Port $modem -Command "AT+COPS?"
             $response += Send-ATCommand -Port $modem -Command "AT+CSQ?"
             $response += Send-ATCommand -Port $modem -Command "AT+XCCINFO?; +XLEC?; +XMCI=1"
+            $response += Send-ATCommand -Port $modem -Command "AT@ERRC:PCELL_SCELL_UL_BAND_BW_INFO()"
 
             if ([string]::IsNullOrEmpty($response)) {
                 continue
@@ -282,6 +285,17 @@ while ($true) {
             }
 
             $oper = $response | Awk -Split '(?<=\+COPS):|,' -Filter '\+COPS:' -Action { $args[3] -replace '"', '' }
+
+            $ulbands = $response | ForEach-Object {
+                $line = $_ -split '(?<=PCELL:)|(?<=SCELL Index\[\w+\]:)'
+
+                if ($line.Count -gt 1) {
+                    $data = $line[1] -replace '"', '' -replace '\s*OK\s*$', '' -replace '^\s+', ''
+                    if ($data.Length -gt 0) { $data }
+                }
+            }
+
+            $ulband = $ulbands -join ", "
 
             [nullable[int]]$temp = $response | Awk -Split '[:,]' -Filter '\+MTSM:' -Action { $args[1] }
 
@@ -347,6 +361,7 @@ while ($true) {
                 Write-Host ("{0,-$lineWidth}" -f ("{0,-$titleWidth} {1,4:f0} $([char]0xB0)C" -f "Temp:", $temp))
             }
             Write-Host ("{0,-$lineWidth}" -f ("{0,-$titleWidth} {1} ({2})" -f "Operator:", (Invoke-NullCoalescing $oper '----'), (Invoke-NullCoalescing $mode '--')))
+            Write-Host ("{0,-$lineWidth}" -f ("{0,-$titleWidth} {1}" -f "Ul Bands:", (Invoke-NullCoalescing $ulband '----')))
 
             if ($null -ne $mode) {
                 Write-Host ("{0,-$lineWidth}" -f ("{0,-$titleWidth} {1}km" -f "Distance:", (Invoke-NullCoalescing $distance '--')))

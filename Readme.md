@@ -29,3 +29,7 @@ Example:
 ### Override DNS
 
 Edit `scripts/main.ps1` to configure your DNS: DNS_OVERRIDE
+
+### Override COM Port
+
+If you don't have ACM2 com ports in your system, you should edit name `$COM_NAME` into `scripts/main.ps1`
