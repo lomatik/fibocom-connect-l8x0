@@ -26,9 +26,9 @@ Write-Host "=== $app_version ==="
 $MAC = "00-00-11-12-13-14"
 
 # COM port display name search string. Supports wildcard. Could be "*COM7*" if acm2 does not exists on your machine
-$COM_NAME = "*acm2*"
+#$COM_NAME = "*acm2*"
 
-#$COM_NAME = "*COM6*"
+$COM_NAME = "*COM6*"
 
 $APN = "internet"
 $APN_USER = ""
@@ -295,7 +295,31 @@ while ($true) {
                 }
             }
 
-            $ulband = $ulbands -join ", "
+            $ulband_test = $ulbands -join ", "
+
+            # Результати зберігаємо тут
+            $ulband = @()
+
+            # Масив для результату
+            $convertedResults = @()
+
+            foreach ($line in $ulband_test) {
+                $line = $line.Trim()
+
+                # Перевіряємо на наявність UL Band та UL Bandwidth
+                if ($line -match "UL Band\s*\[0x([0-9A-Fa-f]+)\].*UL Bandwidth\s*\[([0-9]+MHz)\]") {
+                    $bandHex = $matches[1]
+                    $bandwidth = $matches[2]
+
+                    # Конвертуємо hex в десяткове
+                    $bandDec = [Convert]::ToInt32($bandHex, 16)
+
+                    # Формуємо у форматі B3@20MHz
+                    $convertedResults += "B$bandDec@$bandwidth"
+                }
+            }
+
+            $ulband = $convertedResults -join ", "
 
             [nullable[int]]$temp = $response | Awk -Split '[:,]' -Filter '\+MTSM:' -Action { $args[1] }
 
