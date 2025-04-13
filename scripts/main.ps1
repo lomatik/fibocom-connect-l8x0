@@ -7,7 +7,7 @@ param(
 $PSDefaultParameterValues = @{"*:Verbose" = ($VerbosePreference -eq 'Continue') }
 $ErrorActionPreference = 'Stop'
 
-$app_version = "Fibocom Connect v2025.04.3"
+$app_version = "Fibocom Connect v2025.04.4"
 
 Clear-Host
 
@@ -26,9 +26,9 @@ Write-Host "=== $app_version ==="
 $MAC = "00-00-11-12-13-14"
 
 # COM port display name search string. Supports wildcard. Could be "*COM7*" if acm2 does not exists on your machine
-#$COM_NAME = "*acm2*"
+$COM_NAME = "*acm2*"
 
-$COM_NAME = "*COM6*"
+#$COM_NAME = "*COM4*"
 
 $APN = "internet"
 $APN_USER = ""
@@ -286,37 +286,20 @@ while ($true) {
 
             $oper = $response | Awk -Split '(?<=\+COPS):|,' -Filter '\+COPS:' -Action { $args[3] -replace '"', '' }
 
-            $ulbands = $response | ForEach-Object {
-                $line = $_ -split '(?<=PCELL:)|(?<=SCELL Index\[\w+\]:)'
-
-                if ($line.Count -gt 1) {
-                    $data = $line[1] -replace '"', '' -replace '\s*OK\s*$', '' -replace '^\s+', ''
-                    if ($data.Length -gt 0) { $data }
-                }
-            }
-
-            $ulband_test = $ulbands -join ", "
-
-            # Результати зберігаємо тут
             $ulband = @()
 
-            # Масив для результату
             $convertedResults = @()
 
-            foreach ($line in $ulband_test) {
-                $line = $line.Trim()
+            $fullText = $response -join "`n"
 
-                # Перевіряємо на наявність UL Band та UL Bandwidth
-                if ($line -match "UL Band\s*\[0x([0-9A-Fa-f]+)\].*UL Bandwidth\s*\[([0-9]+MHz)\]") {
-                    $bandHex = $matches[1]
-                    $bandwidth = $matches[2]
+            $pattern = "UL Band\s*\[0x([0-9A-Fa-f]+)\]\s*UL Bandwidth\s*\[([0-9]+MHz)\]"
+            $matches = [regex]::Matches($fullText, $pattern)
 
-                    # Конвертуємо hex в десяткове
-                    $bandDec = [Convert]::ToInt32($bandHex, 16)
-
-                    # Формуємо у форматі B3@20MHz
-                    $convertedResults += "B$bandDec@$bandwidth"
-                }
+            foreach ($match in $matches) {
+                $bandHex = $match.Groups[1].Value
+                $bandwidth = $match.Groups[2].Value
+                $bandDec = [Convert]::ToInt32($bandHex, 16)
+                $convertedResults += "B$bandDec@$bandwidth"
             }
 
             $ulband = $convertedResults -join ", "
